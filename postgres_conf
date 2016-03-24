@@ -1,0 +1,1 @@
+CREATE TABLE USER2(login varchar(32) NOT NULL PRIMARY KEY, password varchar(256) NOT NULL, verify_token varchar(256))
