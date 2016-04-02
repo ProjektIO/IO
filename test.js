@@ -8,6 +8,7 @@ var pgp = require("pg-promise")({});
 var randomstring = require("randomstring");
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var game_rooms = require('./game_rooms');
 
 var cn = {
     host: 'localhost', // server name or IP address;
@@ -111,70 +112,37 @@ db.none("insert into user2(login, password) values($1, $2)", [req.body.login, md
 });
 
 
-var Room = function()
-{
-	this.l1 = '';
-}
-
-Room.prototype.new_message = function(seat_id, message)
-{
-
-}
-
-Room.prototype.new_user = function(seat_id, login)
-{
-	if(seat_id==0)
-	{
-		this.l1 = login;
-		send_message(this, seat_id, {"type" : "server", "info": "Witamy, poczekaj na przeciwnika"});
-	}
-	if(seat_id==1)
-	{
-		console.log("wreszcie drugi user");
-		send_message(this, 1, {"type" : "server", "info": "Witamy, twój przeciwnik ma login "+this.l1});
-		send_message(this, 0, {"type" : "server", "info": "Witamy, twój przeciwnik ma login "+login});
-	}
-}
-
-Room.prototype.bye_user = function(seat_id)
-{
-
-}
-
 var rooms = [];
 var token_map = {};
 
-function send_message(room, seat_id, message)
-{
-	var message_id = 0;
-	console.log("sm sm sm");
-	for(var x = 0; x<rooms.length; x++)
+var master = {
+	send_message : function(room, seat_id, message)
 	{
-		if(rooms[x].room_data==room)
+		var message_id = 0;
+		console.log("sm sm sm");
+		for(var x = 0; x<rooms.length; x++)
 		{
-			if(seat_id==0)
+			if(rooms[x].room_data==room)
 			{
-				console.log("PRÓBA WYSŁANIA DO 0 ROOM "+rooms[x].token0);
-				io.to(rooms[x].token0).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
-			}
-			else
-			{
-				console.log("PRÓBA WYSŁANIA DO 1 ROOM "+rooms[x].token1);
-				io.to(rooms[x].token1).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
+				if(seat_id==0)
+				{
+					console.log("PRÓBA WYSŁANIA DO 0 ROOM "+rooms[x].token0);
+					io.to(rooms[x].token0).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
+				}
+				else
+				{
+					console.log("PRÓBA WYSŁANIA DO 1 ROOM "+rooms[x].token1);
+					io.to(rooms[x].token1).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
+				}
 			}
 		}
 	}
-}
-
-function create_room()
-{
-	return new Room();
-}
+};
+game_rooms.register_master(master);
 
 function find_room(akt_user, akt_token)
 {
 	console.log("xxx");
-	console.log(rooms);
 	for(var i = 0; i<rooms.length; i++)
 	{
 		var obj = rooms[i];
@@ -183,14 +151,15 @@ function find_room(akt_user, akt_token)
 			console.log("abc");
 			obj.usr1 = akt_user;
 			obj.token1 = akt_token;
-			obj.room_data.new_user(1, akt_user);
+			game_rooms.new_user(obj.room_data, 1, akt_user);
 			return {"obj": obj, "seat" : 1};
 		}
 	}
-	console.log("ggg");
-	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", room_data : create_room()};
+	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", room_data : game_rooms.create_room()};
 	rooms[rooms.length] = obj_then;
-	obj_then.room_data.new_user(2, akt_user);
+	console.log("af find");
+	game_rooms.new_user(obj_then.room_data, 2, akt_user);
+	console.log("af find");
 	return {"obj": obj_then, "seat": 0};	
 }
 
@@ -198,7 +167,7 @@ function clear_user(token)
 {
 	if(token_map[token] != undefined)
 	{
-		token_map[token].obj.room_data.bye_user(token_map[token].seat);
+		game_rooms.bye_user(token_map[token].obj.room_data, token_map[token].seat);
 		delete token_map[token];
 		return true;
 	}
@@ -255,9 +224,9 @@ io.on('connection', function(socket){
 			if(token)
 			{
 				if(token.token0 == msg2.token)
-					token.room_data.new_message(0, msg2.message);
+					game_rooms.new_message(token.room_data, 0, msg2.message);
 				if(token.token1 == msg2.token)
-					token.room_data.new_message(1, msg2.message);
+					game_rooms.new_message(token.room_data, 1, msg2.message);
 			}
 			});
 	socket.on('bye', function(msg){
