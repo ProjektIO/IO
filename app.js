@@ -118,6 +118,7 @@ var token_map = {};
 var master = {
 	send_message : function(room, seat_id, message)
 	{
+		//najbardziej gówniana implementacja z możliwych
 		var message_id = 0;
 		console.log("sm sm sm");
 		for(var x = 0; x<rooms.length; x++)
@@ -187,6 +188,12 @@ function access_game_login(login, res)
 	console.log(rooms.length);
 	return JSON.stringify({"token" : newtoken});
 }
+
+app.post('/get_messages', function (req, res) {
+	var token = req.body.token;
+	var min_id = parseInt(req.body.min_id);
+	//TODO
+});
 
 app.post('/access_game', function (req, res) {
 
