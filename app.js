@@ -29,16 +29,16 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 })); 
 
 app.get('/registration', function (req, res) {
-var swig5 = swig.renderFile('test.html', {});
+var swig5 = swig.renderFile('templates/registration.html', {});
 res.send(swig5);
 });
 app.get('/login', function (req, res) {
-var swig5 = swig.renderFile('test2.html', {});
+var swig5 = swig.renderFile('templates/login.html', {});
 res.send(swig5);
 });
 
 app.get('/game', function (req, res) {
-var swig5 = swig.renderFile('test5.html', {});
+var swig5 = swig.renderFile('templates/game.html', {});
 res.send(swig5);
 });
 
@@ -47,7 +47,7 @@ app.get('/', function (req, res) {
 	var token = req.cookies.heroes_session;
 	if(token==undefined)
 	{
-		var swig5 = swig.renderFile('test4.html');
+		var swig5 = swig.renderFile('templates/index.html');
 		res.send(swig5);
 	}
 	db.oneOrNone("select login from session where token=$1", [token])
@@ -55,12 +55,12 @@ app.get('/', function (req, res) {
 		var login = data.login;
 if(login==null)
 {
-	var swig5 = swig.renderFile('test4.html');
+	var swig5 = swig.renderFile('templates/index.html');
 	res.send(swig5);
 }
 else
 {
-var swig5 = swig.renderFile('test3.html', {login: login});
+var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
 res.send(swig5);
 }
 	});
@@ -237,8 +237,7 @@ io.on('connection', function(socket){
 });
 
 
-http.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
+http.listen(9999, function () {
 });
 
 
