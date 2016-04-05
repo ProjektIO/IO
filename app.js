@@ -1,4 +1,7 @@
 "use strict";
+
+var game_rooms = require('./game_rooms');
+
 var swig  = require('swig');
 var md5  = require('md5');
 var express = require('express');
@@ -8,7 +11,6 @@ var pgp = require("pg-promise")({});
 var randomstring = require("randomstring");
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-var game_rooms = require('./game_rooms');
 
 var cn = {
     host: 'localhost', // server name or IP address;
@@ -128,22 +130,20 @@ var master = {
 				if(seat_id==0)
 				{
 					console.log("PRÓBA WYSŁANIA DO 0 ROOM "+rooms[x].token0);
-					io.to(rooms[x].token0).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
+					io.to(rooms[x].token0).emit('msg', JSON.stringify({id : message_id, message : message}));
 				}
 				else
 				{
 					console.log("PRÓBA WYSŁANIA DO 1 ROOM "+rooms[x].token1);
-					io.to(rooms[x].token1).emit('msg', JSON.stringify({"id" : message_id, "message" : message}));
+					io.to(rooms[x].token1).emit('msg', JSON.stringify({id : message_id, message : message}));
 				}
 			}
 		}
 	}
 };
-game_rooms.register_master(master);
 
 function find_room(akt_user, akt_token)
 {
-	console.log("xxx");
 	for(var i = 0; i<rooms.length; i++)
 	{
 		var obj = rooms[i];
@@ -152,16 +152,12 @@ function find_room(akt_user, akt_token)
 			console.log("abc");
 			obj.usr1 = akt_user;
 			obj.token1 = akt_token;
-			game_rooms.new_user(obj.room_data, 1, akt_user);
-			return {"obj": obj, "seat" : 1};
+			return {"obj": obj, "seat" : 1, "registred" : false, "user" : akt_user};
 		}
 	}
-	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", room_data : game_rooms.create_room()};
+	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", room_data : game_rooms.create_room(master)};
 	rooms[rooms.length] = obj_then;
-	console.log("af find");
-	game_rooms.new_user(obj_then.room_data, 2, akt_user);
-	console.log("af find");
-	return {"obj": obj_then, "seat": 0};	
+	return {"obj": obj_then, "seat": 0, "registred" : false, "user" : akt_user};	
 }
 
 function clear_user(token)
@@ -189,12 +185,6 @@ function access_game_login(login, res)
 	return JSON.stringify({"token" : newtoken});
 }
 
-app.post('/get_messages', function (req, res) {
-	var token = req.body.token;
-	var min_id = parseInt(req.body.min_id);
-	//TODO
-});
-
 app.post('/access_game', function (req, res) {
 
 var token = req.cookies.heroes_session;
@@ -221,25 +211,46 @@ var token = req.cookies.heroes_session;
 
 io.on('connection', function(socket){
 	console.log("user connect");
-	  socket.on('hi', function(msg){
-		  	console.log("NOWY USER XD "+msg);
-		  	socket.join(msg);
-		        });
+			socket.on('hi', function(msg){
+			socket.token = msg;
+			var obj = token_map[msg];
+			console.log("NOWY USER XD "+msg);
+			socket.join(msg);
+				if(!obj.registred)
+				{
+					obj.registred = true;
+					game_rooms.new_user(obj.obj.room_data, obj.seat, obj.user); 							
+				}
+			});
 	  socket.on('msg2', function(msg){
-		        var msg2 = JSON.parse(msg);
+				console.log(msg);
+		        var msg2 = msg;
+//JSON.parse(msg);
+				console.log(msg2);
 			var token = token_map[msg2.token];
-			if(token)
+			if(token && token.obj)
 			{
-				if(token.token0 == msg2.token)
-					game_rooms.new_message(token.room_data, 0, msg2.message);
-				if(token.token1 == msg2.token)
-					game_rooms.new_message(token.room_data, 1, msg2.message);
+				if(token.obj.token0 == msg2.token)
+					game_rooms.new_message(token.obj.room_data, 0, msg2.message);
+				if(token.obj.token1 == msg2.token)
+					game_rooms.new_message(token.obj.room_data, 1, msg2.message);
 			}
 			});
 	socket.on('bye', function(msg){
 		        var msg2 = JSON.parse(msg);
 			clear_user(msg2.token);
 			});
+socket.on('disconnect', function(){
+    console.log(socket.token);
+		var token = token_map[socket.token];
+		if(token && token.obj)
+			{
+				if(token.obj.token0 == socket.token)
+					game_rooms.bye_user(token.obj.room_data, 0);
+				if(token.obj.token1 == socket.token)
+					game_rooms.bye_user(token.obj.room_data, 1);
+			}
+	});
 
 });
 
