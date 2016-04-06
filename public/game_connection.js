@@ -9,7 +9,6 @@ function GameConnection(handler, existed_token)
 		$.post("/access_game", {}, function(result){
 	    	var tk = JSON.parse(result);
 				that.token = tk.token;
-				handler.debug("POŁĄCZONO, WEWNĘTRZNY TOKEN GRY:" + that.token);
 				that.socket.emit('hi', that.token);
 				that.socket.on('msg', function(msg){
 				var msg2 = JSON.parse(msg);
