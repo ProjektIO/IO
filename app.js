@@ -35,7 +35,7 @@ var swig5 = swig.renderFile('templates/registration.html', {});
 res.send(swig5);
 });
 app.get('/login', function (req, res) {
-var swig5 = swig.renderFile('templates/login.html', {});
+var swig5 = swig.renderFile('templates/login.html', {info:''});
 res.send(swig5);
 });
 
@@ -70,7 +70,7 @@ res.send(swig5);
 
 
 
-app.post('/login_send', function (req, res) {
+app.post('/login', function (req, res) {
 	var token = randomstring.generate(32);
 	var login = req.body.login;
 	var pass = md5(req.body.password);
@@ -81,35 +81,40 @@ app.post('/login_send', function (req, res) {
 					db.none("insert into session(login, token) values($1, $2)", [login, token])
 					  .then(function () {
 					res.cookie("heroes_session", token);
-			    		res.send("ok");
+			    		res.redirect("/");
 					})
 				    .catch(function (error) {
 					console.log(error)
-    					res.send("ccc");
+var swig5 = swig.renderFile('templates/login.html', {info: "BLAD2"});
+res.send(swig5);
 					});
 				}
 				else
 				{
-					res.send('aaa');
+var swig5 = swig.renderFile('templates/login.html', {info: "BLAD1"});
+res.send(swig5);
 				}
 			        })
 	        .catch(function (error) {
-					res.send('bbb');
+var swig5 = swig.renderFile('templates/login.html', {info: JSON.stringify(error)});
+res.send(swig5);
+
 				    });
 });
 
 
-app.post('/registarion_send', function(req, res) {
+app.post('/registration', function(req, res) {
 console.log("witam z registarion send");
 console.log(md5(req.body.password));
 
 db.none("insert into user2(login, password) values($1, $2)", [req.body.login, md5(req.body.password)])
     .then(function () {
-    		res.send("ok");
+    		res.redirect("/");
 	})
     .catch(function (error) {
 		console.log(error)
-    		res.send("error xD");
+ var swig5 = swig.renderFile('templates/registration.html', {info: JSON.stringify(error)});
+res.send(swig5);
 	});
 });
 
@@ -147,7 +152,7 @@ function find_room(akt_user, akt_token)
 	for(var i = 0; i<rooms.length; i++)
 	{
 		var obj = rooms[i];
-		if(obj.room_data != null && obj.usr1=="" && obj.usr0!=akt_user)
+		if(obj.room_data != null && obj.usr1=="" && obj.usr0!=akt_user && obj.active==true)
 		{
 			console.log("abc");
 			obj.usr1 = akt_user;
@@ -155,7 +160,7 @@ function find_room(akt_user, akt_token)
 			return {"obj": obj, "seat" : 1, "registred" : false, "user" : akt_user};
 		}
 	}
-	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", room_data : game_rooms.create_room(master)};
+	var obj_then = {usr0 : akt_user, token0 : akt_token, usr1: "", token1 : "", active: true, room_data : game_rooms.create_room(master)};
 	rooms[rooms.length] = obj_then;
 	return {"obj": obj_then, "seat": 0, "registred" : false, "user" : akt_user};	
 }
@@ -245,6 +250,7 @@ socket.on('disconnect', function(){
 		var token = token_map[socket.token];
 		if(token && token.obj)
 			{
+				token.obj.active = false;
 				if(token.obj.token0 == socket.token)
 					game_rooms.bye_user(token.obj.room_data, 0);
 				if(token.obj.token1 == socket.token)
