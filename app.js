@@ -67,6 +67,29 @@ res.send(swig5);
 }
 	});
 });
+/*
+app.get('/unlogin', function (req, res) {
+	var token = req.cookies.heroes_session;
+	if(token==undefined)
+	{
+		res.send("");
+	}
+	db.oneOrNone("select login from session where token=$1", [token])
+	.then(function(data){
+		var login = data.login;
+if(login==null)
+{
+	var swig5 = swig.renderFile('templates/index.html');
+	res.send("");
+}
+else
+{
+var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
+res.send(swig5);
+}
+	});
+});
+*/
 
 
 

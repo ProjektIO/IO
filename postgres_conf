@@ -1,2 +1,2 @@
 CREATE TABLE USER2(login varchar(32) NOT NULL PRIMARY KEY, password varchar(256) NOT NULL, verify_token varchar(256));
-CREATE TABLE SESSION(login varchar(32) NOT NULL, token varchar(32) NOT NULL, timex TIMESTAMP) 
+CREATE TABLE SESSION(login varchar(32) NOT NULL, token varchar(32) NOT NULL, timex TIMESTAMP);
