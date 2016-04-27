@@ -44,9 +44,18 @@ var swig5 = swig.renderFile('templates/game.html', {});
 res.send(swig5);
 });
 
+var getlogin = function(req) {
+	return new Promise(function(resolve) {
+		var token = req.cookies.heroes_session;
+		if (token==undefined) {resolve(null);}
+		else {
+		db.oneOrNone("select login from session where token=$1", [token])
+	.then(function(data){return data.login;});
+	}});
+}
 
 app.get('/', function (req, res) {
-	var token = req.cookies.heroes_session;
+	/*var token = req.cookies.heroes_session;
 	if(token==undefined)
 	{
 		var swig5 = swig.renderFile('templates/index.html');
@@ -55,6 +64,18 @@ app.get('/', function (req, res) {
 	db.oneOrNone("select login from session where token=$1", [token])
 	.then(function(data){
 		var login = data.login;
+if(login==null)
+{
+	var swig5 = swig.renderFile('templates/index.html');
+	res.send(swig5);
+}
+else
+{
+var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
+res.send(swig5);
+}
+	});*/
+	getlogin(req).then(function(login){
 if(login==null)
 {
 	var swig5 = swig.renderFile('templates/index.html');
@@ -90,9 +111,6 @@ res.send(swig5);
 	});
 });
 */
-
-
-
 app.post('/login', function (req, res) {
 	var token = randomstring.generate(32);
 	var login = req.body.login;
