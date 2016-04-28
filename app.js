@@ -50,94 +50,64 @@ var getlogin = function(req) {
 		if (token==undefined) {resolve(null);}
 		else {
 		db.oneOrNone("select login from session where token=$1", [token])
-	.then(function(data){return data.login;});
+	.then(function(data){resolve(data.login);});
 	}});
 }
 
 app.get('/', function (req, res) {
-	/*var token = req.cookies.heroes_session;
-	if(token==undefined)
-	{
-		var swig5 = swig.renderFile('templates/index.html');
-		res.send(swig5);
-	}
-	db.oneOrNone("select login from session where token=$1", [token])
-	.then(function(data){
-		var login = data.login;
-if(login==null)
-{
-	var swig5 = swig.renderFile('templates/index.html');
-	res.send(swig5);
-}
-else
-{
-var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
-res.send(swig5);
-}
-	});*/
 	getlogin(req).then(function(login){
-if(login==null)
-{
-	var swig5 = swig.renderFile('templates/index.html');
-	res.send(swig5);
-}
-else
-{
-var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
-res.send(swig5);
-}
+		if(login==null)
+		{
+			var swig5 = swig.renderFile('templates/index.html');
+			res.send(swig5);
+		}
+		else
+		{
+			var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
+			res.send(swig5);
+		}
 	});
 });
-/*
 app.get('/unlogin', function (req, res) {
-	var token = req.cookies.heroes_session;
-	if(token==undefined)
-	{
-		res.send("");
-	}
-	db.oneOrNone("select login from session where token=$1", [token])
-	.then(function(data){
-		var login = data.login;
-if(login==null)
-{
-	var swig5 = swig.renderFile('templates/index.html');
-	res.send("");
-}
-else
-{
-var swig5 = swig.renderFile('templates/index_logged.html', {login: login});
-res.send(swig5);
-}
+	getlogin(req).then(function(login){
+		if(login==null) {
+			res.send("");
+		}
+		else {
+			var token = req.cookies.heroes_session;
+			res.clearCookie('heroes_session');
+			db.query("delete from session where token=$1", [token]);
+		}
+		res.redirect("/");
 	});
 });
-*/
-app.post('/login', function (req, res) {
+app.post('/', function (req, res) {
 	var token = randomstring.generate(32);
 	var login = req.body.login;
-	var pass = md5(req.body.password);
-	db.any("select * from user2 where login=$1 and password=$2", [login, pass])
+	var pass = req.body.password;
+	db.oneOrNone("select * from user2 where login=$1", [login])
 	    .then(function (data) {
-		    		if(data.length>0)
+		    		if(data!=undefined && md5(pass+data.salt)==data.password)
 				{
-					db.none("insert into session(login, token) values($1, $2)", [login, token])
+					db.none("insert into session(login, token, create_time) values($1, $2, CURRENT_TIMESTAMP)", [login, token])
 					  .then(function () {
 					res.cookie("heroes_session", token);
 			    		res.redirect("/");
 					})
 				    .catch(function (error) {
 					console.log(error)
-var swig5 = swig.renderFile('templates/login.html', {info: "BLAD2"});
+var swig5 = swig.renderFile('templates/index.html', {info: "BLAD2"});
 res.send(swig5);
 					});
 				}
 				else
 				{
-var swig5 = swig.renderFile('templates/login.html', {info: "BLAD1"});
+var swig5 = swig.renderFile('templates/index.html', {info: "BLAD1"});
 res.send(swig5);
 				}
 			        })
 	        .catch(function (error) {
-var swig5 = swig.renderFile('templates/login.html', {info: JSON.stringify(error)});
+var swig5 = swig.renderFile('templates/index.html', {info: JSON.stringify(error)});
 res.send(swig5);
 
 				    });
@@ -146,9 +116,17 @@ res.send(swig5);
 
 app.post('/registration', function(req, res) {
 console.log("witam z registarion send");
-console.log(md5(req.body.password));
+var salt = randomstring.generate(32);
+console.log(md5(req.body.password+salt));
+if(!req.body.login || !req.body.password || req.body.password != req.body.password2 || !req.body.mail)
+{
+ var swig5 = swig.renderFile('templates/registration.html', {info: "serio?"});
+res.send(swig5);
 
-db.none("insert into user2(login, password) values($1, $2)", [req.body.login, md5(req.body.password)])
+}
+else
+{
+db.none("insert into user2(login, password, salt, mail, create_time) values($1, $2, $3, $4, CURRENT_TIMESTAMP)", [req.body.login, md5(req.body.password+salt), salt, req.body.mail])
     .then(function () {
     		res.redirect("/");
 	})
@@ -157,6 +135,7 @@ db.none("insert into user2(login, password) values($1, $2)", [req.body.login, md
  var swig5 = swig.renderFile('templates/registration.html', {info: JSON.stringify(error)});
 res.send(swig5);
 	});
+}
 });
 
 
@@ -232,16 +211,8 @@ function access_game_login(login, res)
 }
 
 app.post('/access_game', function (req, res) {
-
-var token = req.cookies.heroes_session;
-	if(token==undefined)
-	{
-		res.end(JSON.stringify({"token" : null}));
-	}
-	db.oneOrNone("select login from session where token=$1", [token])
-	.then(function(data){
-		var login = data.login;
-		console.log(login);
+getlogin(req)
+	.then(function(login){
 		if(login==null)
 		{
 			res.end(JSON.stringify({"token" : null}));
